@@ -30,39 +30,6 @@ npm install
 
 Create a `.env` file in the project root:
 
-```env
-NODE_ENV=development
-PORT=5000
-BODY_LIMIT=10mb
-
-DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public
-
-FIREBASE=your-firebase-service-account.json
-FIREBASE_WEB_API_KEY=your-firebase-web-api-key
-FIREBASE_AUTH_URL=https://identitytoolkit.googleapis.com/v1/accounts
-FIREBASE_REFRESH_URL=https://securetoken.googleapis.com/v1/token
-
-JWT_SECRET=your-jwt-secret
-
-CHAPA_URL=https://api.chapa.co/v1
-CHAPA_SEC=your-chapa-secret-key
-CHAPA_WEBHOOK_HASH=your-chapa-webhook-hash
-CHAPA_CALLBACK_URL=https://your-domain.com/api/payment/chapa-webhook
-CDIWORK_RATE_CONVERTER=your-rate-conversion-url
-
-STRIPE_SECRET_KEY=sk_test_xxx
-STRIPE_WEBHOOK_SECRET=whsec_xxx
-
-CPANEL_EMAIL_URL=your-mail-service-url
-EMAIL_API_SECRET=your-mail-service-secret
-
-MAX_PDF_UPLOAD_MB=10
-SUBSCRIPTION_EXPIRATION_CRON=0 9 * * *
-SUBSCRIPTION_EXPIRATION_TIMEZONE=Africa/Addis_Ababa
-```
-
-Place the Firebase service account file inside `firebase/` and set `FIREBASE` to that filename.
-
 Generate the Prisma client and run migrations:
 
 ```bash
@@ -90,15 +57,15 @@ GET /api/health
 
 ## Scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start the API with nodemon |
-| `npm start` | Start the API with Node |
-| `npm run prisma:generate` | Generate Prisma client |
-| `npm run prisma:migrate` | Run Prisma migrations in development |
-| `npm run prisma:studio` | Open Prisma Studio |
-| `npm run prisma:db-push` | Push schema changes without a migration |
-| `npm run seed` | Run the seed script, if present |
+| Command                   | Description                             |
+| ------------------------- | --------------------------------------- |
+| `npm run dev`             | Start the API with nodemon              |
+| `npm start`               | Start the API with Node                 |
+| `npm run prisma:generate` | Generate Prisma client                  |
+| `npm run prisma:migrate`  | Run Prisma migrations in development    |
+| `npm run prisma:studio`   | Open Prisma Studio                      |
+| `npm run prisma:db-push`  | Push schema changes without a migration |
+| `npm run seed`            | Run the seed script, if present         |
 
 ## API Routes
 
@@ -106,28 +73,28 @@ All routes are mounted under `/api`.
 
 ### Health
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `GET` | `/health` | Public |
+| Method | Route     | Access |
+| ------ | --------- | ------ |
+| `GET`  | `/health` | Public |
 
 ### Auth
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `POST` | `/auth/register` | Public |
-| `POST` | `/auth/login` | Public, rate limited |
-| `POST` | `/auth/refresh` | Public, rate limited |
-| `GET` | `/auth/revoke/:uid` | Admin |
+| Method | Route               | Access               |
+| ------ | ------------------- | -------------------- |
+| `POST` | `/auth/register`    | Public               |
+| `POST` | `/auth/login`       | Public, rate limited |
+| `POST` | `/auth/refresh`     | Public, rate limited |
+| `GET`  | `/auth/revoke/:uid` | Admin                |
 
 ### Courses
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `GET` | `/courses` | Public, optional Firebase auth |
-| `GET` | `/courses/:id` | Public |
-| `POST` | `/courses` | Admin |
-| `POST` | `/courses/:id/create_lesson` | Admin, multipart PDF upload |
-| `DELETE` | `/courses/:id` | Admin |
+| Method   | Route                        | Access                         |
+| -------- | ---------------------------- | ------------------------------ |
+| `GET`    | `/courses`                   | Public, optional Firebase auth |
+| `GET`    | `/courses/:id`               | Public                         |
+| `POST`   | `/courses`                   | Admin                          |
+| `POST`   | `/courses/:id/create_lesson` | Admin, multipart PDF upload    |
+| `DELETE` | `/courses/:id`               | Admin                          |
 
 Lesson PDF upload fields:
 
@@ -138,61 +105,61 @@ Only PDF files are accepted.
 
 ### Lessons
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `GET` | `/lessons/course/:courseId` | Student/Admin with active subscription |
-| `GET` | `/lessons/:id` | Student/Admin with active subscription |
-| `GET` | `/lessons/complete/:id` | Student with active subscription |
-| `PUT` | `/lessons/:id` | Admin, multipart PDF upload |
-| `DELETE` | `/lessons/:id` | Admin |
+| Method   | Route                       | Access                                 |
+| -------- | --------------------------- | -------------------------------------- |
+| `GET`    | `/lessons/course/:courseId` | Student/Admin with active subscription |
+| `GET`    | `/lessons/:id`              | Student/Admin with active subscription |
+| `GET`    | `/lessons/complete/:id`     | Student with active subscription       |
+| `PUT`    | `/lessons/:id`              | Admin, multipart PDF upload            |
+| `DELETE` | `/lessons/:id`              | Admin                                  |
 
 ### Comments
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `POST` | `/comments` | Student/Admin with active subscription |
-| `GET` | `/comments/lesson/:lessonId` | Student/Admin with active subscription |
-| `DELETE` | `/comments/:id` | Student/Admin with active subscription |
+| Method   | Route                        | Access                                 |
+| -------- | ---------------------------- | -------------------------------------- |
+| `POST`   | `/comments`                  | Student/Admin with active subscription |
+| `GET`    | `/comments/lesson/:lessonId` | Student/Admin with active subscription |
+| `DELETE` | `/comments/:id`              | Student/Admin with active subscription |
 
 ### Users
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `GET` | `/users/dashboard` | Student |
-| `GET` | `/users/profile` | Student/Admin |
+| Method | Route              | Access        |
+| ------ | ------------------ | ------------- |
+| `GET`  | `/users/dashboard` | Student       |
+| `GET`  | `/users/profile`   | Student/Admin |
 
 ### Certificates
 
-| Method | Route | Access |
-| --- | --- | --- |
+| Method | Route                    | Access                           |
+| ------ | ------------------------ | -------------------------------- |
 | `POST` | `/certificates/generate` | Student with active subscription |
-| `GET` | `/certificates/my` | Student with active subscription |
+| `GET`  | `/certificates/my`       | Student with active subscription |
 
 ### Payments
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `GET` | `/payment/mySubscription` | Student |
-| `GET` | `/payment/subscribe/:currency` | Student |
-| `POST` | `/payment/chapa-webhook` | Chapa webhook signature required |
-| `POST` | `/payment/webhook` | Stripe webhook raw body route |
+| Method | Route                          | Access                           |
+| ------ | ------------------------------ | -------------------------------- |
+| `GET`  | `/payment/mySubscription`      | Student                          |
+| `GET`  | `/payment/subscribe/:currency` | Student                          |
+| `POST` | `/payment/chapa-webhook`       | Chapa webhook signature required |
+| `POST` | `/payment/webhook`             | Stripe webhook raw body route    |
 
 The Stripe webhook is mounted directly in `src/server.js` so it can receive the raw request body before JSON parsing.
 
 ### Admin
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `GET` | `/admin/students` | Admin |
+| Method  | Route                      | Access         |
+| ------- | -------------------------- | -------------- |
+| `GET`   | `/admin/students`          | Admin          |
 | `PATCH` | `/admin/subscriptions/:id` | Admin workflow |
 
 ### Settings
 
-| Method | Route | Access |
-| --- | --- | --- |
-| `POST` | `/settings` | Admin |
-| `GET` | `/settings` | Public |
-| `PUT` | `/settings/:id` | Admin |
+| Method   | Route           | Access                   |
+| -------- | --------------- | ------------------------ |
+| `POST`   | `/settings`     | Admin                    |
+| `GET`    | `/settings`     | Public                   |
+| `PUT`    | `/settings/:id` | Admin                    |
 | `DELETE` | `/settings/:id` | Public in current routes |
 
 ## Authentication
