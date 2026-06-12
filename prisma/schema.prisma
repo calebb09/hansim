@@ -1,0 +1,255 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ======================
+// USER MODEL
+// ======================
+model User {
+  id                 String   @id @default(uuid()) @db.Uuid
+  fullName           String
+  uuid               String   @unique   // 👈 ADD THIS
+  email              String   @unique
+  role               Role     @default(STUDENT)
+  languagePreference Language @default(EN)
+  isEmailVerified    Boolean  @default(false)
+  isAcountActive     Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  // Relations
+  subscriptions Subscription[]
+  completions   LessonCompletion[]
+  comments      Comment[]
+  certificates  Certificate[]
+  activityLogs  ActivityLog[]
+
+  // ←←← ADD THIS LINE
+  courses Course[] // Courses this user instructs
+  transactions Transaction[] //transactions this user did
+
+  @@map("users")
+}
+
+// ======================
+// COURSE MODEL
+// ======================
+model Course {
+  id           String   @id @default(uuid()) @db.Uuid
+  title        String
+  description  String?
+  instructorId String?  @db.Uuid
+  what_you_learn String[]
+  requirement  String[]
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  instructor    User?          @relation(fields: [instructorId], references: [id])
+  lessons       Lesson[]
+  
+  certificates  Certificate[]
+
+  @@map("courses")
+}
+
+// ======================
+// LESSON MODEL (Bilingual)
+// ======================
+model Lesson {
+  id            String   @id @default(uuid()) @db.Uuid
+  courseId      String   @db.Uuid
+  lessonOrder   Int
+  titleEn       String
+  titleAm       String?
+  descriptionEn String?
+  descriptionAm String?
+  videoUrlEn      String?
+  videoUrlAm      String?
+  videoDuration String? // e.g., "45:30" or use Interval in raw SQL
+  pdfUrlEn        String?
+  pdfUrlAm        String?
+  createdAt     DateTime @default(now())
+
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  completions LessonCompletion[]
+  comments    Comment[]
+
+  @@unique([courseId, lessonOrder])
+  @@map("lessons")
+}
+
+// ======================
+// TRANSACTION MODEL
+// ======================
+model Transaction {
+  id          String      @id @default(uuid()) @db.Uuid
+  userId      String      @db.Uuid
+  amount      Float
+  reason      String
+  status      TransactionStatus @default(PENDING)
+  txn_id      String
+  currency    String      @default("USD")
+  createdAt   DateTime    @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription Subscription?   // ← One-to-one optional relation (no fields/references here)
+
+  @@map("transactions")
+}
+
+// ======================
+// SUBSCRIPTION MODEL
+// ======================
+model Subscription {
+  id              String     @id @default(uuid()) @db.Uuid
+  userId          String     @db.Uuid
+  startDate       DateTime
+  endDate         DateTime
+  status          SubscriptionStatus @default(PENDING)
+  paymentProvider String?
+  transactionId   String?    @unique @db.Uuid
+  amount          Float?
+  currency        String     @default("USD")
+  createdAt       DateTime   @default(now())
+  expiryReminderSentAt DateTime?
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+// ======================
+// SETTINGS MODEL
+// ======================
+
+model Setting {
+  id              String             @id @default(uuid()) @db.Uuid
+  amount          Float?
+  duration        String
+  currency        String             @default("USD")
+  createdAt       DateTime           @default(now())
+
+  @@map("settings")
+}
+
+// ======================
+// LESSON COMPLETION
+// ======================
+model LessonCompletion {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @db.Uuid
+  lessonId           String   @db.Uuid
+  completedAt        DateTime @default(now())
+  progressPercentage Int      @default(100)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("lesson_completions")
+}
+
+// ======================
+// COMMENT / Q&A
+// ======================
+model Comment {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  lessonId   String   @db.Uuid
+  parentId   String?  @db.Uuid
+  content    String
+  isApproved Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  user    User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lesson  Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  parent  Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+// ======================
+// CERTIFICATE
+// ======================
+model Certificate {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  courseId      String   @db.Uuid
+  certificateId String   @unique
+  issuedAt      DateTime @default(now())
+  pdfUrl        String?
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@map("certificates")
+}
+
+// ======================
+// COUPON MODEL
+// ======================
+model Coupon {
+  id                 String    @id @default(uuid()) @db.Uuid
+  code               String    @unique
+  discountPercentage Int?
+  discountAmount     Float?
+  validFrom          DateTime?
+  validUntil         DateTime?
+  maxUses            Int?
+  usedCount          Int       @default(0)
+  createdAt          DateTime  @default(now())
+
+  @@map("coupons")
+}
+
+// ======================
+// ACTIVITY LOG (Optional but Recommended)
+// ======================
+model ActivityLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @db.Uuid
+  action     String
+  entityType String?
+  entityId   String?  @db.Uuid
+  details    Json?
+  createdAt  DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_logs")
+}
+
+// ======================
+// ENUMS
+// ======================
+enum Role {
+  STUDENT
+  ADMIN
+  INSTRUCTOR
+}
+
+enum Language {
+  EN
+  AM
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELED
+  SUSPENDED
+}
+
+enum TransactionStatus{
+  PENDING
+  SUCCEEDED
+  FAILED
+}

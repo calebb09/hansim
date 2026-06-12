@@ -1,0 +1,12 @@
+.package-lock.json
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+.env
+.idea/
+.vscode/
+uploads/pdfs/
+firebase/
+postman/
