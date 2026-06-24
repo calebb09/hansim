@@ -1,5 +1,5 @@
 import prisma from "../config/db.js";
-import {createPayment, currencyConvert} from "../services/chapa.service.js";
+import { createPayment, currencyConvert } from "../services/chapa.service.js";
 import {
   constructWebhookEvent,
   createPaymentIntent,
@@ -13,8 +13,8 @@ import {
 export const mySubscription = async (req, res) => {
   try {
     const userID = await prisma.user.findUnique({
-      where: {uuid: req.user.uuid},
-      select: {id: true},
+      where: { uuid: req.user.uuid },
+      select: { id: true },
     });
     const subscription = await prisma.subscription.findFirst({
       where: {
@@ -28,27 +28,27 @@ export const mySubscription = async (req, res) => {
     if (!subscription) {
       return res
         .status(404)
-        .json({success: false, message: "No active subscription found"});
+        .json({ success: false, message: "No active subscription found" });
     }
 
-    res.json({success: true, data: subscription});
+    res.json({ success: true, data: subscription });
   } catch (error) {
     console.error("Error fetching subscription:", error);
-    res.status(500).json({success: false, message: error.message});
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
 export const subscribe = async (req, res) => {
   try {
-    const {currency} = req.params;
+    const { currency } = req.params;
 
     //get user
     const user = await prisma.user.findUnique({
-      where: {uuid: req.user.uuid},
+      where: { uuid: req.user.uuid },
     });
 
     if (!user) {
-      return res.status(404).json({success: false, message: "User not found"});
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const etbRate = await currencyConvert();
@@ -59,7 +59,7 @@ export const subscribe = async (req, res) => {
     if (!setting) {
       return res
         .status(500)
-        .json({success: false, message: "Subscription settings not found"});
+        .json({ success: false, message: "Subscription settings not found" });
     }
 
     const amount =
@@ -68,12 +68,12 @@ export const subscribe = async (req, res) => {
         : setting.amount * etbRate.data[0].rate;
 
     const userID = await prisma.user.findUnique({
-      where: {uuid: req.user.uuid},
-      select: {id: true},
+      where: { uuid: req.user.uuid },
+      select: { id: true },
     });
 
     if (!userID) {
-      return res.status(404).json({success: false, message: "User not found"});
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     // add transacntion record in db
@@ -118,7 +118,7 @@ export const subscribe = async (req, res) => {
         );
         showData = intiializePayment;
       } else {
-        return res.status(etbRate.status).json({message: etbRate.error});
+        return res.status(etbRate.status).json({ message: etbRate.error });
       }
     }
 
@@ -134,10 +134,10 @@ export const subscribe = async (req, res) => {
     //   },
     // });
 
-    return res.status(200).json({success: true, data: showData});
+    return res.status(200).json({ success: true, data: showData });
   } catch (error) {
     console.error("Subscription error:", error);
-    res.status(500).json({success: false, message: error.message});
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
@@ -226,7 +226,7 @@ export const stripeWebhook = async (req, res) => {
     console.error("Error processing webhook:", error);
   }
 
-  res.json({received: true});
+  res.json({ received: true });
 };
 
 export const chapaWebhook = async (req, res) => {
@@ -240,39 +240,42 @@ export const chapaWebhook = async (req, res) => {
     );
     // console.log(eventData);
 
+    const userInfo = await prisma.user.findUnique({
+      where: { email: eventData.email },
+    });
+    console.log(`✅ User info retrieved for email: ${eventData.email}`, userInfo.id);
     // perform update transaction status in db
     const updateTransaction = await prisma.transaction.updateMany({
-      where: {txn_id: txRef},
-      data: {status: status === "success" ? "COMPLETED" : "FAILED"},
+      where: { txn_id: txRef },
+      data: { status: status === "success" ? "SUCCEEDED" : "FAILED" },
     });
     if (updateTransaction) {
       console.log(`✅ Transaction status updated for tx_ref: ${txRef}`);
     }
     console.log(
-      `✅ Transaction updated for tx_ref: ${txRef} with status: ${
-        status === "success" ? "COMPLETED" : "FAILED"
+      `✅ Transaction updated for tx_ref: ${txRef} with status: ${status === "success" ? "SUCCEEDED" : "FAILED"
       }`,
     );
 
     if (status === "success") {
       await prisma.subscription.create({
         data: {
-          userId: data.tx_ref, // Assuming tx_ref is the user ID or you can map it accordingly
+          userId: userInfo.id, // Assuming tx_ref is the user ID or you can map it accordingly
           startDate: new Date(),
           endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
           paymentProvider: "chapa",
-          transactionId: txRef,
-          amount: data.amount,
-          currency: data.currency.toUpperCase(),
+          transactionId: updateTransaction.id,
+          amount: parseFloat(eventData.amount),
+          currency: eventData.currency.toUpperCase(),
           status: "ACTIVE",
         },
       });
-      console.log(`✅ Subscription created for user: ${data.tx_ref}`);
+      console.log(`✅ Subscription created for user: ${tx_ref}`);
     }
 
-    res.json({received: true});
+    res.json({ received: true });
   } catch (error) {
     console.error("Error processing Chapa webhook:", error);
-    res.status(500).json({message: "Internal Server Error"});
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
