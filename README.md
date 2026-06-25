@@ -30,6 +30,39 @@ npm install
 
 Create a `.env` file in the project root:
 
+```env
+NODE_ENV=development
+PORT=5000
+BODY_LIMIT=10mb
+
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:PORT/DATABASE?schema=public
+
+FIREBASE=your-firebase-service-account.json
+FIREBASE_WEB_API_KEY=your-firebase-web-api-key
+FIREBASE_AUTH_URL=https://identitytoolkit.googleapis.com/v1/accounts
+FIREBASE_REFRESH_URL=https://securetoken.googleapis.com/v1/token
+
+JWT_SECRET=your-jwt-secret
+
+CHAPA_URL=https://api.chapa.co/v1
+CHAPA_SEC=your-chapa-secret-key
+CHAPA_WEBHOOK_HASH=your-chapa-webhook-hash
+CHAPA_CALLBACK_URL=https://your-domain.com/api/payment/chapa-webhook
+CDIWORK_RATE_CONVERTER=your-rate-conversion-url
+
+STRIPE_SECRET_KEY=sk_test_xxx
+STRIPE_WEBHOOK_SECRET=whsec_xxx
+
+CPANEL_EMAIL_URL=your-mail-service-url
+EMAIL_API_SECRET=your-mail-service-secret
+
+MAX_PDF_UPLOAD_MB=10
+SUBSCRIPTION_EXPIRATION_CRON=0 9 * * *
+SUBSCRIPTION_EXPIRATION_TIMEZONE=Africa/Addis_Ababa
+```
+
+Place the Firebase service account file inside `firebase/` and set `FIREBASE` to that filename.
+
 Generate the Prisma client and run migrations:
 
 ```bash
