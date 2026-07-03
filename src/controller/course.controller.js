@@ -94,9 +94,21 @@ export const getCourseById = async (req, res) => {
 
 export const createCourse = async (req, res) => {
   try {
-    const {title, description, what_you_learn, requirement} = req.body;
+    const {title, description, what_you_learn, requirement, categoryId} =
+      req.body;
+    if (
+      !title ||
+      !description ||
+      !what_you_learn ||
+      !requirement ||
+      !categoryId
+    ) {
+      return res
+        .status(400)
+        .json({success: false, message: "All fields are required"});
+    }
     const course = await prisma.course.create({
-      data: {title, description, what_you_learn, requirement},
+      data: {title, description, what_you_learn, requirement, categoryId},
     });
     res.status(201).json({success: true, data: course});
   } catch (error) {

@@ -2,11 +2,18 @@ import prisma from "../config/db.js";
 
 export const createSettings = async (req, res) => {
   try {
-    const {amount, duration} = req.body;
+    const {amount, duration, categoryId} = req.body;
+    if (!amount || !duration || !categoryId) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount, duration, and categoryId are required",
+      });
+    }
     const subscription = await prisma.setting.create({
       data: {
         amount,
         duration,
+        categoryId,
       },
     });
 
@@ -18,7 +25,20 @@ export const createSettings = async (req, res) => {
 
 export const getSettings = async (req, res) => {
   try {
-    const settings = await prisma.setting.findMany();
+    const settings = await prisma.setting.findMany({
+      include: {
+        category: true,
+      },
+    });
+
+    // show transaction
+
+    const transaction = await prisma.transaction.findFirst({
+      where: {
+        txn_id: "txn_1783083253091",
+      },
+    });
+    console.log(transaction);
     res.json({
       success: true,
       data: settings,
@@ -77,7 +97,7 @@ export const removeSetting = async (req, res) => {
     console.error(error);
     res.status(500).json({
       success: false,
-      message: "Failed to update setting",
+      message: "Failed to remove setting",
       error: error.message,
     });
   }

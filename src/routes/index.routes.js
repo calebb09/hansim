@@ -2,6 +2,7 @@ import {Router} from "express";
 
 import adminRoutes from "./admin.routes.js";
 import authRoutes from "./auth.routes.js";
+import categoryRoutes from "./category.routes.js";
 import certificateRoutes from "./certificate.routes.js";
 import commentRoutes from "./comment.routes.js";
 import courseRoutes from "./course.routes.js";
@@ -25,7 +26,7 @@ router.get("/health", (req, res) => {
 router.use("/auth", authRoutes);
 router.use("/courses", courseRoutes);
 router.use("/lessons", lessonRoutes);
-
+router.use("/category", categoryRoutes);
 router.use("/comments", commentRoutes);
 router.use("/users", userRoutes);
 router.use("/certificates", certificateRoutes);

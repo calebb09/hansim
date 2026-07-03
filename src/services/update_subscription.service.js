@@ -14,10 +14,14 @@ export const activateStripeSubscription = async (paymentIntent) => {
     where: {txn_id: transactionRef},
   });
 
+  console.log(`the transaction data =>>`, transaction);
+
   if (!transaction) {
     console.warn(`No transaction found for Stripe ref: ${transactionRef}`);
     return;
   }
+
+  console.log(`Activating subscription for transaction: ${transaction.id}`);
 
   await prisma.transaction.update({
     where: {id: transaction.id},

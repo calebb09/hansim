@@ -14,7 +14,7 @@ router.get(
   mySubscription,
 );
 router.get(
-  "/subscribe/:currency",
+  "/subscribe/:currency/package/:packageId",
   FirebaseAuthenticated(["STUDENT"]),
   subscribe,
 );
