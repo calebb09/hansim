@@ -38,6 +38,77 @@ export const mySubscription = async (req, res) => {
   }
 };
 
+export const myTransactions = async (req, res) => {
+  try {
+    const userID = await prisma.user.findUnique({
+      where: {uuid: req.user.uuid},
+      select: {id: true},
+    });
+
+    if (!userID) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Get total count
+    const total = await prisma.transaction.count({
+      where: {
+        userId: userID.id,
+      },
+    });
+
+    const transactions = await prisma.transaction.findMany({
+      where: {
+        userId: userID.id,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        subscription: true,
+        setting: {
+          // ← Fixed: should be "setting" not "packge_id"
+          select: {
+            amount: true,
+            duration: true,
+            categoryId: true,
+          },
+        },
+      },
+      skip,
+      take: limit,
+    });
+
+    const totalPages = Math.ceil(total / limit);
+
+    res.json({
+      success: true,
+      data: transactions,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalItems: total,
+        itemsPerPage: limit,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 export const subscribe = async (req, res) => {
   try {
     const {currency, packageId} = req.params;
@@ -86,6 +157,7 @@ export const subscribe = async (req, res) => {
         currency: currency.toUpperCase(),
         txn_id: `txn_${Date.now()}`,
         reason: "Subscription Payment",
+        packge_id: packageId,
       },
     });
 

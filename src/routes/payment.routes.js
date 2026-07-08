@@ -2,6 +2,7 @@ import {Router} from "express";
 import {
   chapaWebhook,
   mySubscription,
+  myTransactions,
   subscribe,
 } from "../controller/payment.controller.js";
 import {verifySignature} from "../middleware/chapaSignature.js";
@@ -13,6 +14,7 @@ router.get(
   FirebaseAuthenticated(["STUDENT"]),
   mySubscription,
 );
+router.get("/transaction_history", FirebaseAuthenticated(["STUDENT"]), myTransactions);
 router.get(
   "/subscribe/:currency/package/:packageId",
   FirebaseAuthenticated(["STUDENT"]),

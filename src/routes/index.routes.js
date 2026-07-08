@@ -9,6 +9,7 @@ import courseRoutes from "./course.routes.js";
 import lessonRoutes from "./lesson.routes.js";
 import paymentRoutes from "./payment.routes.js";
 import settingRoutes from "./setting.routes.js";
+import quizzRoutes from "./quizz.routes.js";
 import userRoutes from "./user.routes.js";
 
 const router = Router();
@@ -32,6 +33,7 @@ router.use("/users", userRoutes);
 router.use("/certificates", certificateRoutes);
 router.use("/payment", paymentRoutes);
 router.use("/admin", adminRoutes);
+router.use("/quizzes", quizzRoutes)
 router.use("/settings", settingRoutes);
 
 // Payment webhook is handled separately in server.js (because of raw body)

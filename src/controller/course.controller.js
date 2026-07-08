@@ -1,4 +1,5 @@
 import prisma from "../config/db.js";
+import asyncHandler from "../middleware/asyncHandler.js"; // optional but recommended
 import {hasActiveSubscription} from "../services/activeSubscription.service.js";
 import {deleteUploadedFiles} from "../utils/file_path.utils.js";
 
@@ -75,6 +76,68 @@ export const getAllCourses = async (req, res) => {
   }
 };
 
+export const myCourseLists = async (req, res) => {
+  try {
+    const userId = req.user?.uuid;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized: User ID not found",
+      });
+    }
+
+    const courses = await prisma.course.findMany({
+      where: {isActive: true, categoryId: req.subscription.categoryId},
+      include: {
+        lessons: {
+          orderBy: {lessonOrder: "asc"},
+        },
+        quizzes: {
+          where: {isActive: true},
+          include: {
+            questions: {
+              orderBy: {questionOrder: "asc"},
+            },
+          },
+        },
+      },
+      orderBy: {createdAt: "desc"},
+    });
+
+    res.json({
+      success: true,
+      data: courses,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch user's courses",
+      error: error.message,
+    });
+  }
+};
+
+export const viewQuizz = asyncHandler(async (req, res) => {
+  const courseId = req.params.id;
+
+  const quizzes = await prisma.quiz.findMany({
+    where: {courseId, isActive: true},
+    include: {
+      questions: {
+        orderBy: {questionOrder: "asc"},
+      },
+    },
+    orderBy: {createdAt: "desc"},
+  });
+
+  res.json({
+    success: true,
+    data: quizzes,
+  });
+});
+
 export const getCourseById = async (req, res) => {
   try {
     const {id} = req.params;
@@ -83,6 +146,15 @@ export const getCourseById = async (req, res) => {
       include: {
         lessons: {orderBy: {lessonOrder: "asc"}},
         instructor: true,
+        category: true,
+        quizzes: {
+          where: {isActive: true},
+          include: {
+            questions: {
+              orderBy: {questionOrder: "asc"},
+            },
+          },
+        },
       },
     });
     if (!course) return res.status(404).json({message: "Course not found"});
@@ -178,6 +250,54 @@ export const createLesson = async (req, res) => {
     });
   }
 };
+
+export const createQuizz = asyncHandler(async (req, res) => {
+  const {
+    titleEn,
+    titleAm,
+    descriptionEn,
+    descriptionAm,
+    passingScore,
+    timeLimit,
+    maxAttempts,
+    questions,
+  } = req.body;
+
+  const courseId = req.params.id;
+
+  const quiz = await prisma.quiz.create({
+    data: {
+      courseId,
+      titleEn,
+      titleAm,
+      descriptionEn,
+      descriptionAm,
+      passingScore,
+      timeLimit,
+      maxAttempts: maxAttempts || 3,
+      questions: {
+        create: questions.map((q, index) => ({
+          questionOrder: index + 1,
+          textEn: q.textEn,
+          textAm: q.textAm,
+          type: q.type,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+          explanationEn: q.explanationEn,
+          explanationAm: q.explanationAm,
+          points: q.points || 1,
+        })),
+      },
+    },
+    include: {questions: true},
+  });
+
+  res.status(201).json({
+    success: true,
+    message: "Quiz created successfully",
+    data: quiz,
+  });
+});
 
 export const removeCourse = async (req, res) => {
   try {

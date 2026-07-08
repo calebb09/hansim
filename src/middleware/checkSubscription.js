@@ -47,6 +47,7 @@ export const checkSubscription = async (req, res, next) => {
       }
 
       req.subscription = subscription;
+
       next();
     }
   } catch (error) {

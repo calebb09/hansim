@@ -13,7 +13,7 @@ generator client {
 model User {
   id                 String   @id @default(uuid()) @db.Uuid
   fullName           String
-  uuid               String   @unique   // 👈 ADD THIS
+  uuid               String   @unique // 👈 ADD THIS
   email              String   @unique
   role               Role     @default(STUDENT)
   languagePreference Language @default(EN)
@@ -30,8 +30,9 @@ model User {
   activityLogs  ActivityLog[]
 
   // ←←← ADD THIS LINE
-  courses Course[] // Courses this user instructs
-  transactions Transaction[] //transactions this user did
+  courses         Course[] // Courses this user instructs
+  transactions    Transaction[] //transactions this user did
+  quizSubmissions QuizSubmission[] // ← Multiple attempts supported
 
   @@map("users")
 }
@@ -40,23 +41,92 @@ model User {
 // COURSE MODEL
 // ======================
 model Course {
-  id           String   @id @default(uuid()) @db.Uuid
-  title        String
-  description  String?
-  instructorId String?  @db.Uuid
-  categoryId   String?  @db.Uuid
+  id             String   @id @default(uuid()) @db.Uuid
+  title          String
+  description    String?
+  instructorId   String?  @db.Uuid
+  categoryId     String?  @db.Uuid
   what_you_learn String[]
-  requirement  String[]
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  requirement    String[]
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
 
-  instructor    User?          @relation(fields: [instructorId], references: [id])
-  category      Category?       @relation(fields: [categoryId], references: [id])
-  lessons       Lesson[]
-  
-  certificates  Certificate[]
+  instructor User?     @relation(fields: [instructorId], references: [id])
+  category   Category? @relation(fields: [categoryId], references: [id])
+  lessons    Lesson[]
+
+  certificates Certificate[]
+  quizzes      Quiz[]
 
   @@map("courses")
+}
+
+// ======================
+// QUIZ MODEL
+// ======================
+model Quiz {
+  id            String   @id @default(uuid()) @db.Uuid
+  courseId      String   @db.Uuid
+  titleEn       String
+  titleAm       String?
+  descriptionEn String?
+  descriptionAm String?
+  passingScore  Int? // e.g. 70
+  timeLimit     Int? // minutes
+  maxAttempts   Int?     @default(3) // Optional limit on attempts
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions   Question[]
+  submissions QuizSubmission[]
+
+  @@map("quizzes")
+}
+
+// ======================
+// NEW: QUESTION MODEL
+// ======================
+model Question {
+  id            String       @id @default(uuid()) @db.Uuid
+  quizId        String       @db.Uuid
+  questionOrder Int
+  textEn        String
+  textAm        String?
+  type          QuestionType @default(MULTIPLE_CHOICE)
+  options       Json? // Array of options for MCQ, True/False, etc.
+  correctAnswer Json // Can store string, number, or array depending on type
+  explanationEn String?
+  explanationAm String?
+  points        Int          @default(1)
+  createdAt     DateTime     @default(now())
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([quizId, questionOrder])
+  @@map("questions")
+}
+
+// ======================
+// NEW: QUIZ SUBMISSION (Multiple Attempts)
+// ======================
+model QuizSubmission {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  quizId        String   @db.Uuid
+  attemptNumber Int      @default(1) // For multiple attempts
+  score         Float?
+  answers       Json? // { questionId: selectedAnswer, ... }
+  isPassed      Boolean?
+  timeTaken     Int? // in seconds
+  submittedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, quizId, attemptNumber]) // Allows multiple attempts
+  @@map("quiz_submissions")
 }
 
 // ======================
@@ -70,11 +140,11 @@ model Lesson {
   titleAm       String?
   descriptionEn String?
   descriptionAm String?
-  videoUrlEn      String?
-  videoUrlAm      String?
+  videoUrlEn    String?
+  videoUrlAm    String?
   videoDuration String? // e.g., "45:30" or use Interval in raw SQL
-  pdfUrlEn        String?
-  pdfUrlAm        String?
+  pdfUrlEn      String?
+  pdfUrlAm      String?
   createdAt     DateTime @default(now())
 
   course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -89,17 +159,19 @@ model Lesson {
 // TRANSACTION MODEL
 // ======================
 model Transaction {
-  id          String      @id @default(uuid()) @db.Uuid
-  userId      String      @db.Uuid
-  amount      Float
-  reason      String
-  status      TransactionStatus @default(PENDING)
-  txn_id      String
-  currency    String      @default("USD")
-  createdAt   DateTime    @default(now())
+  id        String            @id @default(uuid()) @db.Uuid
+  userId    String            @db.Uuid
+  amount    Float
+  reason    String
+  status    TransactionStatus @default(PENDING)
+  txn_id    String
+  packge_id String?           @db.Uuid
+  currency  String            @default("USD")
+  createdAt DateTime          @default(now())
 
   user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subscription Subscription?   // ← One-to-one optional relation (no fields/references here)
+  subscription Subscription? // ← One-to-one optional relation (no fields/references here)
+  setting      Setting?      @relation(fields: [packge_id], references: [id], onDelete: Cascade)
 
   @@map("transactions")
 }
@@ -108,22 +180,22 @@ model Transaction {
 // SUBSCRIPTION MODEL
 // ======================
 model Subscription {
-  id              String     @id @default(uuid()) @db.Uuid
-  userId          String     @db.Uuid
-  startDate       DateTime
-  endDate         DateTime
-  status          SubscriptionStatus @default(PENDING)
-  categoryId      String?     @db.Uuid
-  paymentProvider String?
-  transactionId   String?    @unique @db.Uuid
-  amount          Float?
-  currency        String     @default("USD")
-  createdAt       DateTime   @default(now())
+  id                   String             @id @default(uuid()) @db.Uuid
+  userId               String             @db.Uuid
+  startDate            DateTime
+  endDate              DateTime
+  status               SubscriptionStatus @default(PENDING)
+  categoryId           String?            @db.Uuid
+  paymentProvider      String?
+  transactionId        String?            @unique @db.Uuid
+  amount               Float?
+  currency             String             @default("USD")
+  createdAt            DateTime           @default(now())
   expiryReminderSentAt DateTime?
 
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transaction Transaction?  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  category    Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  category    Category?    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
@@ -131,25 +203,25 @@ model Subscription {
 // ======================
 // SETTINGS MODEL
 // ======================
-
 model Setting {
-  id              String    @id @default(uuid()) @db.Uuid
-  amount          Float?
-  categoryId      String?   @unique @db.Uuid
-  duration        String
-  currency        String    @default("USD")
-  createdAt       DateTime  @default(now())
+  id         String   @id @default(uuid()) @db.Uuid
+  amount     Float?
+  categoryId String?  @unique @db.Uuid
+  duration   String
+  currency   String   @default("USD")
+  createdAt  DateTime @default(now())
 
-  category        Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category     Category?     @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  transactions Transaction[] // ← ADD THIS LINE (inverse relation)
 
   @@map("settings")
 }
 
 model Category {
-  id              String      @id @default(uuid()) @db.Uuid
-  title           String      @unique
-  description     String
-  createdAt       DateTime    @default(now())
+  id            String   @id @default(uuid()) @db.Uuid
+  title         String   @unique
+  description   String
+  createdAt     DateTime @default(now())
 
   courses       Course[]
   subscriptions Subscription[]
@@ -268,8 +340,15 @@ enum SubscriptionStatus {
   SUSPENDED
 }
 
-enum TransactionStatus{
+enum TransactionStatus {
   PENDING
   SUCCEEDED
   FAILED
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  SHORT_ANSWER
+  FILL_IN_BLANK
 }
